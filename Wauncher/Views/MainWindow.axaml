@@ -454,6 +454,7 @@
                                 VerticalAlignment="Center"
                                 Spacing="8">
                                 <TextBlock
+                                    x:Name="CarouselOfflineTitle"
                                     FontSize="18"
                                     FontWeight="Bold"
                                     Foreground="{DynamicResource AppPrimaryText}"

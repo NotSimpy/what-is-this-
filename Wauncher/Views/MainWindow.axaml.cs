@@ -57,6 +57,7 @@ namespace Wauncher.Views
         public MainWindow()
         {
             InitializeComponent();
+            SettingsWindowViewModel.DisableCarouselChanged += OnDisableCarouselChanged;
 
             // Initialize services in background to improve startup performance
             _ = Task.Run(() =>
@@ -103,12 +104,41 @@ namespace Wauncher.Views
             {
                 if (_forceClose)
                     return;
-                
-                // Hide to tray instead of closing if tray icon is available
-                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+
+                var settings = SettingsWindowViewModel.LoadGlobal();
+                bool shouldHideToTray =
+                    settings.MinimizeToTray &&
+                    (Game.IsRunning() ||
+                     string.Equals((DataContext as MainWindowViewModel)?.GameStatus, "Running", StringComparison.OrdinalIgnoreCase));
+
+                if (shouldHideToTray)
                 {
                     e.Cancel = true;
                     Hide();
+                    MemoryManager.StartBackgroundCleanup();
+                    return;
+                }
+
+                MemoryManager.StopBackgroundCleanup();
+
+                try
+                {
+                    if (Application.Current is App app)
+                    {
+                        var trayIconField = typeof(App).GetField("_trayIcon",
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        var trayIcon = trayIconField?.GetValue(app) as Avalonia.Controls.TrayIcon;
+                        trayIcon?.Dispose();
+                    }
+                }
+                catch
+                {
+                }
+
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                {
+                    _forceClose = true;
+                    Dispatcher.UIThread.Post(() => desktop.Shutdown());
                 }
             };
 
@@ -132,9 +162,25 @@ namespace Wauncher.Views
 
                 var carouselContainer = this.FindControl<Grid>("CarouselContainer");
                 var offlinePanel = this.FindControl<Border>("CarouselOfflinePanel");
+                var offlineTitle = this.FindControl<TextBlock>("CarouselOfflineTitle");
                 var offlineSubText = this.FindControl<TextBlock>("CarouselOfflineSubText");
                 if (carouselContainer == null)
                     return;
+
+                var settings = SettingsWindowViewModel.LoadGlobal();
+                if (settings.DisableCarousel)
+                {
+                    if (offlinePanel != null)
+                        offlinePanel.IsVisible = true;
+
+                    if (offlineTitle != null)
+                        offlineTitle.Text = "Carousel Disabled";
+
+                    if (offlineSubText != null)
+                        offlineSubText.Text = "Carousel is turned off in settings.";
+
+                    return;
+                }
 
                 bool hasInternet = NetworkInterface.GetIsNetworkAvailable();
                 var urls = hasInternet
@@ -145,6 +191,9 @@ namespace Wauncher.Views
                 {
                     if (offlinePanel != null)
                         offlinePanel.IsVisible = true;
+
+                    if (offlineTitle != null)
+                        offlineTitle.Text = "No internet connection";
 
                     if (offlineSubText != null)
                     {
@@ -200,6 +249,7 @@ namespace Wauncher.Views
 
         private async Task CleanupServicesAsync()
         {
+            SettingsWindowViewModel.DisableCarouselChanged -= OnDisableCarouselChanged;
             TeardownCarousel();
 
             try
@@ -231,6 +281,7 @@ namespace Wauncher.Views
                     if (IsVisible)
                         Hide();
                 });
+                MemoryManager.StartBackgroundCleanup();
                 return;
             }
 
@@ -245,7 +296,12 @@ namespace Wauncher.Views
                     WindowState = WindowState.Normal;
                     Activate();
                 });
+                MemoryManager.StopBackgroundCleanup();
+                return;
             }
+
+            if (string.Equals(vm.GameStatus, "Not Running", StringComparison.OrdinalIgnoreCase))
+                MemoryManager.StopBackgroundCleanup();
         }
 
         private static Image[] CreateCarouselImages(int count)
@@ -331,6 +387,37 @@ namespace Wauncher.Views
             _currentCarouselIndex = 0;
             _currentCarouselSlot = 0;
             Interlocked.Exchange(ref _carouselRotateInProgress, 0);
+        }
+
+        private void OnDisableCarouselChanged(bool disabled)
+        {
+            Dispatcher.UIThread.Post(async () =>
+            {
+                var offlinePanel = this.FindControl<Border>("CarouselOfflinePanel");
+                var offlineTitle = this.FindControl<TextBlock>("CarouselOfflineTitle");
+                var offlineSubText = this.FindControl<TextBlock>("CarouselOfflineSubText");
+
+                if (disabled)
+                {
+                    TeardownCarousel();
+
+                    if (offlinePanel != null)
+                        offlinePanel.IsVisible = true;
+
+                    if (offlineTitle != null)
+                        offlineTitle.Text = "Carousel Disabled";
+
+                    if (offlineSubText != null)
+                        offlineSubText.Text = "Carousel is turned off in settings.";
+
+                    return;
+                }
+
+                if (offlinePanel != null)
+                    offlinePanel.IsVisible = false;
+
+                await InitializeCarouselAsync();
+            });
         }
 
         private async Task SetCarouselImageAsync(Image image, string url)
@@ -511,6 +598,8 @@ namespace Wauncher.Views
             catch
             {
             }
+
+            MemoryManager.StopBackgroundCleanup();
 
             try
             {

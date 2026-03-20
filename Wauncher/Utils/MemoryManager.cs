@@ -2,7 +2,6 @@ using System;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Wauncher.Utils
 {
@@ -10,13 +9,7 @@ namespace Wauncher.Utils
     {
         private static Timer? _cleanupTimer;
         private const int CleanupIntervalMinutes = 5;
-
-        static MemoryManager()
-        {
-            _cleanupTimer = new Timer(CleanupMemory, null, 
-                TimeSpan.FromMinutes(CleanupIntervalMinutes), 
-                TimeSpan.FromMinutes(CleanupIntervalMinutes));
-        }
+        private static readonly object _timerLock = new();
 
         public static void CleanupMemory(object? state = null)
         {
@@ -42,6 +35,27 @@ namespace Wauncher.Utils
         public static void ForceCleanup()
         {
             CleanupMemory();
+        }
+
+        public static void StartBackgroundCleanup()
+        {
+            lock (_timerLock)
+            {
+                _cleanupTimer ??= new Timer(
+                    CleanupMemory,
+                    null,
+                    TimeSpan.FromMinutes(CleanupIntervalMinutes),
+                    TimeSpan.FromMinutes(CleanupIntervalMinutes));
+            }
+        }
+
+        public static void StopBackgroundCleanup()
+        {
+            lock (_timerLock)
+            {
+                _cleanupTimer?.Dispose();
+                _cleanupTimer = null;
+            }
         }
 
         [DllImport("kernel32.dll")]

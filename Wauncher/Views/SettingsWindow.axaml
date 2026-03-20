@@ -6,7 +6,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:vm="using:Wauncher.ViewModels"
     Title="Settings"
-    Width="400"
+    Width="430"
     Height="510"
     d:DesignHeight="510"
     d:DesignWidth="400"
@@ -100,8 +100,8 @@
                     LetterSpacing="2"
                     Text="GENERAL" />
 
-                <Grid Margin="0,0,0,20">
-                    <StackPanel VerticalAlignment="Center">
+                <Grid Margin="0,0,0,20" ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
                         <TextBlock
                             FontSize="14"
                             FontWeight="SemiBold"
@@ -136,6 +136,55 @@
                         HorizontalAlignment="Right"
                         VerticalAlignment="Center"
                         IsChecked="{Binding SkipUpdates}"
+                        OffContent=""
+                        OnContent="" />
+                </Grid>
+
+                <Grid Margin="0,0,0,20">
+                    <StackPanel VerticalAlignment="Center">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource AppPrimaryText}"
+                            Text="Disable Carousel" />
+                        <TextBlock
+                            FontSize="11"
+                            Foreground="{DynamicResource AppMutedText}"
+                            Text="Reduce memory usage by turning off rotating images" />
+                    </StackPanel>
+                    <ToggleSwitch
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        IsChecked="{Binding DisableCarousel}"
+                        OffContent=""
+                        OnContent="" />
+                </Grid>
+
+                <Grid Margin="0,0,0,20" ColumnDefinitions="*,Auto">
+                    <StackPanel
+                        Grid.Column="0"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Stretch"
+                        Margin="0,0,16,0">
+                        <TextBlock
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="{DynamicResource AppPrimaryText}"
+                            Text="Disable Hardware Acceleration" />
+                        <TextBlock
+                            FontSize="11"
+                            Foreground="{DynamicResource AppMutedText}"
+                            TextWrapping="Wrap"
+                            Text="Use software rendering instead of GPU rendering." />
+                    </StackPanel>
+                    <ToggleSwitch
+                        x:Name="DisableHardwareAccelerationToggle"
+                        Grid.Column="1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        IsChecked="{Binding DisableHardwareAcceleration}"
+                        Checked="DisableHardwareAccelerationToggle_Changed"
+                        Unchecked="DisableHardwareAccelerationToggle_Changed"
                         OffContent=""
                         OnContent="" />
                 </Grid>
