@@ -424,10 +424,6 @@ namespace Wauncher.ViewModels
                         ProfilePicture = _friendsService.CurrentUserAvatar;
                     if (e.PropertyName == nameof(IFriendsService.CurrentUserUsername))
                         UsernameGreeting = $"Hello, {_friendsService.CurrentUserUsername}";
-                    if (e.PropertyName == nameof(IFriendsService.WhitelistText))
-                        WhitelistText = _friendsService.WhitelistText;
-                    if (e.PropertyName == nameof(IFriendsService.WhitelistDotColor))
-                        WhitelistDotColor = _friendsService.WhitelistDotColor;
                 };
             }
         }
@@ -436,8 +432,6 @@ namespace Wauncher.ViewModels
         {
             ProfilePicture = _friendsService.CurrentUserAvatar;
             UsernameGreeting = $"Hello, {_friendsService.CurrentUserUsername}";
-            WhitelistText = _friendsService.WhitelistText;
-            WhitelistDotColor = _friendsService.WhitelistDotColor;
         }
 
         private void OnNetworkAvailabilityChanged(object? sender, NetworkAvailabilityEventArgs e)

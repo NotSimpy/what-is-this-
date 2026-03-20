@@ -44,6 +44,8 @@ namespace Wauncher.Views
         private readonly List<CancellationTokenSource?> _zoomCts = new();
 
         private bool _forceClose;
+        private bool _isLoaded;
+        private int _carouselInitInProgress;
         private Image[] _carouselImages = Array.Empty<Image>();
         private List<string> _carouselImageUrls = new();
         private DispatcherTimer? _carouselTimer;
@@ -75,6 +77,8 @@ namespace Wauncher.Views
                     {
                         DataContext = viewModel;
                         viewModel.PropertyChanged += ViewModel_PropertyChanged;
+                        if (_isLoaded)
+                            _ = InitializeCarouselAsync();
                     });
                 }
                 catch (Exception ex)
@@ -88,7 +92,9 @@ namespace Wauncher.Views
 
             Loaded += (_, _) =>
             {
-                _ = InitializeCarouselAsync();
+                _isLoaded = true;
+                if (_carouselService != null)
+                    _ = InitializeCarouselAsync();
                 _ = PatchNotesControl.LoadPatchNotesAsync();
             };
 
@@ -110,8 +116,17 @@ namespace Wauncher.Views
 
         private async Task InitializeCarouselAsync()
         {
+            if (Interlocked.Exchange(ref _carouselInitInProgress, 1) == 1)
+                return;
+
             try
             {
+                for (int attempt = 0; attempt < 20 && _carouselService == null; attempt++)
+                    await Task.Delay(100);
+
+                if (_carouselService == null)
+                    return;
+
                 TeardownCarousel();
 
                 var carouselContainer = this.FindControl<Grid>("CarouselContainer");
@@ -176,6 +191,10 @@ namespace Wauncher.Views
             {
                 System.Diagnostics.Debug.WriteLine("Carousel init failed: " + ex.Message);
             }
+            finally
+            {
+                Interlocked.Exchange(ref _carouselInitInProgress, 0);
+            }
         }
 
         private async Task CleanupServicesAsync()
@@ -184,7 +203,8 @@ namespace Wauncher.Views
 
             try
             {
-                await _carouselService.TeardownCarouselAsync();
+                if (_carouselService != null)
+                    await _carouselService.TeardownCarouselAsync();
             }
             catch
             {

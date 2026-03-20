@@ -50,8 +50,9 @@ namespace Wauncher.Utils
             }
 
             // Make sure the steam_appid.txt exists, because if it doesn't steam throws an error.
-            if (!File.Exists("steam_appid.txt"))
-                File.WriteAllText("steam_appid.txt", "730");
+            var appIdPath = Path.Combine(AppContext.BaseDirectory, "steam_appid.txt");
+            if (!File.Exists(appIdPath))
+                File.WriteAllText(appIdPath, "730");
 
             unsafe
             {

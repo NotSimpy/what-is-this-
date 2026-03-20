@@ -142,10 +142,6 @@ namespace Wauncher.Services
                 {
                     CurrentUserAvatar = AvatarCache.GetDisplaySource(self.AvatarUrl);
                     CurrentUserUsername = self.Username;
-                    var isWhitelisted = !string.Equals(self.Status, "Offline", StringComparison.OrdinalIgnoreCase)
-                        && !string.IsNullOrWhiteSpace(self.Status);
-                    WhitelistText = isWhitelisted ? "Whitelisted" : "Unknown";
-                    WhitelistDotColor = isWhitelisted ? "#4CAF50" : "Gray";
                 });
             }
             catch

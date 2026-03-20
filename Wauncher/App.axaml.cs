@@ -33,71 +33,52 @@ namespace Wauncher
             {
                 DisableAvaloniaDataAnnotationValidation();
 
-                // Create main window immediately to show UI faster
-                desktop.MainWindow = new MainWindow();
-                
-                // Run checks in background to avoid blocking UI
-                _ = Task.Run(async () =>
+                try
                 {
-                    try
+                    if (!Steam.IsInstalled())
                     {
-                        if (!Steam.IsInstalled())
-                        {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                ConsoleManager.ShowError(
-                                    "Steam is required to use Wauncher.\n\nPlease install Steam and relaunch.");
-                                Environment.Exit(0);
-                            });
-                            return;
-                        }
-
-                        if (!IsSteamRunning())
-                        {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                ConsoleManager.ShowError(
-                                    "Steam must be open before using Wauncher.\n\nPlease open Steam, then relaunch Wauncher.");
-                                Environment.Exit(0);
-                            });
-                            return;
-                        }
-
-                        if (Game.IsRunning())
-                        {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                ConsoleManager.ShowError(
-                                    "ClassicCounter is already running.\n\nPlease close the game before opening Wauncher again.");
-                                Environment.Exit(0);
-                            });
-                            return;
-                        }
-
-                        bool hasRecentSteamUser = await Steam.GetRecentLoggedInSteamID(false);
-                        if (!hasRecentSteamUser)
-                        {
-                            await Dispatcher.UIThread.InvokeAsync(() =>
-                            {
-                                ConsoleManager.ShowError(
-                                    "Steam is open, but no logged-in Steam account was detected.\n\nPlease sign in to Steam and relaunch Wauncher.");
-                                Environment.Exit(0);
-                            });
-                            return;
-                        }
+                        ConsoleManager.ShowError(
+                            "Steam is required to use Wauncher.\n\nPlease install Steam and relaunch.");
+                        desktop.Shutdown();
+                        return;
                     }
-                    catch (Exception ex)
+
+                    if (!IsSteamRunning())
                     {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            ConsoleManager.ShowError($"Startup error: {ex.Message}");
-                            Environment.Exit(0);
-                        });
+                        ConsoleManager.ShowError(
+                            "Steam must be open before using Wauncher.\n\nPlease open Steam, then relaunch Wauncher.");
+                        desktop.Shutdown();
+                        return;
                     }
-                });
+
+                    if (Game.IsRunning())
+                    {
+                        ConsoleManager.ShowError(
+                            "ClassicCounter is already running.\n\nPlease close the game before opening Wauncher again.");
+                        desktop.Shutdown();
+                        return;
+                    }
+
+                    bool hasRecentSteamUser = await Steam.GetRecentLoggedInSteamID(false);
+                    if (!hasRecentSteamUser)
+                    {
+                        ConsoleManager.ShowError(
+                            "Steam is open, but no logged-in Steam account was detected.\n\nPlease sign in to Steam and relaunch Wauncher.");
+                        desktop.Shutdown();
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ConsoleManager.ShowError($"Startup error: {ex.Message}");
+                    desktop.Shutdown();
+                    return;
+                }
+
+                desktop.MainWindow = new MainWindow();
 
                 // Initialize Discord in background
-                _ = Task.Run(async () =>
+                _ = Task.Run(() =>
                 {
                     try
                     {
