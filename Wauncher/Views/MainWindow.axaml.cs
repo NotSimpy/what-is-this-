@@ -18,6 +18,7 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using System.ComponentModel;
+using System.Diagnostics;
 using SkiaSharp;
 using Wauncher.Services;
 using Wauncher.ViewModels;
@@ -496,34 +497,61 @@ namespace Wauncher.Views
 
         private void CloseButton_Click(object? sender, RoutedEventArgs e)
         {
-            _forceClose = true;
-            
-            // Dispose tray icon to ensure complete shutdown
-            if (Application.Current is App app)
-            {
-                var trayIconField = typeof(App).GetField("_trayIcon", 
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var trayIcon = trayIconField?.GetValue(app) as Avalonia.Controls.TrayIcon;
-                trayIcon?.Dispose();
-            }
-            
-            Close();
+            ForceQuit();
         }
 
         public void ForceQuit()
         {
             _forceClose = true;
-            
-            // Dispose tray icon to ensure complete shutdown
-            if (Application.Current is App app)
+
+            try
             {
-                var trayIconField = typeof(App).GetField("_trayIcon", 
-                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                var trayIcon = trayIconField?.GetValue(app) as Avalonia.Controls.TrayIcon;
-                trayIcon?.Dispose();
+                TeardownCarousel();
             }
-            
-            Close();
+            catch
+            {
+            }
+
+            try
+            {
+                if (Application.Current is App app)
+                {
+                    var trayIconField = typeof(App).GetField("_trayIcon",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    var trayIcon = trayIconField?.GetValue(app) as Avalonia.Controls.TrayIcon;
+                    trayIcon?.Dispose();
+                }
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                Close();
+            }
+            catch
+            {
+            }
+
+            try
+            {
+                if (Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+                    desktop.Shutdown();
+            }
+            catch
+            {
+            }
+
+            Environment.Exit(0);
+
+            try
+            {
+                Process.GetCurrentProcess().Kill();
+            }
+            catch
+            {
+            }
         }
     }
 }
