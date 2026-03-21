@@ -20,7 +20,7 @@ namespace Wauncher.Utils
             if (!File.Exists(filePath))
                 return true;
 
-            return await RetryHelper.ExecuteWithRetryAsync(async () =>
+            return await RetryHelper.ExecuteWithRetryAsync(() =>
             {
                 if (File.Exists(filePath))
                 {
@@ -28,7 +28,7 @@ namespace Wauncher.Utils
                     if (Debug.Enabled())
                         Terminal.Debug($"Successfully deleted file: {filePath}");
                 }
-                return true;
+                return Task.FromResult(true);
             }, maxRetries, 500);
         }
 
@@ -44,7 +44,7 @@ namespace Wauncher.Utils
             if (!Directory.Exists(directoryPath))
                 return true;
 
-            return await RetryHelper.ExecuteWithRetryAsync(async () =>
+            return await RetryHelper.ExecuteWithRetryAsync(() =>
             {
                 if (Directory.Exists(directoryPath))
                 {
@@ -52,7 +52,7 @@ namespace Wauncher.Utils
                     if (Debug.Enabled())
                         Terminal.Debug($"Successfully deleted directory: {directoryPath}");
                 }
-                return true;
+                return Task.FromResult(true);
             }, maxRetries, 500);
         }
 
@@ -69,7 +69,7 @@ namespace Wauncher.Utils
             if (!File.Exists(sourcePath))
                 throw new FileNotFoundException($"Source file not found: {sourcePath}");
 
-            return await RetryHelper.ExecuteWithRetryAsync(async () =>
+            return await RetryHelper.ExecuteWithRetryAsync(() =>
             {
                 // Ensure destination directory exists
                 string destinationDir = Path.GetDirectoryName(destinationPath) ?? throw new InvalidOperationException($"Invalid destination path: {destinationPath}");
@@ -82,7 +82,7 @@ namespace Wauncher.Utils
                 if (Debug.Enabled())
                     Terminal.Debug($"Successfully moved file from {sourcePath} to {destinationPath}");
                 
-                return true;
+                return Task.FromResult(true);
             }, maxRetries, 500);
         }
 
@@ -91,7 +91,7 @@ namespace Wauncher.Utils
         /// </summary>
         /// <param name="directoryPath">Directory path to create</param>
         /// <returns>True if directory exists or was created successfully</returns>
-        public static async Task<bool> SafeCreateDirectoryAsync(string directoryPath)
+        public static Task<bool> SafeCreateDirectoryAsync(string directoryPath)
         {
             try
             {
@@ -101,12 +101,12 @@ namespace Wauncher.Utils
                     if (Debug.Enabled())
                         Terminal.Debug($"Created directory: {directoryPath}");
                 }
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 Terminal.Error($"Failed to create directory {directoryPath}: {ex.Message}");
-                return false;
+                return Task.FromResult(false);
             }
         }
 

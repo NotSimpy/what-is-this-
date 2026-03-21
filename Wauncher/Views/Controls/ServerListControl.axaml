@@ -14,7 +14,7 @@
     <!-- Server dropdown list -->
     <Border
         x:Name="ServerListPanel"
-        MaxHeight="{Binding IsDropdownOpen, Converter={x:Static conv:BooleanToMaxHeightConverter.Instance}, ConverterParameter=270}"
+        MaxHeight="{Binding IsDropdownOpen, Converter={x:Static conv:BooleanToMaxHeightConverter.Instance}, ConverterParameter=270, FallbackValue=0}"
         Margin="0,0,0,0"
         HorizontalAlignment="Right"
         VerticalAlignment="Bottom"

@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using System.Diagnostics;
+using Wauncher.Utils;
 using Wauncher.ViewModels;
 
 namespace Wauncher.Views
@@ -10,6 +11,7 @@ namespace Wauncher.Views
     public partial class SettingsWindow : Window
     {
         private bool _allowHardwareAccelerationRestart;
+        private bool _isRefreshingSteamButton;
 
         public SettingsWindow()
         {
@@ -18,7 +20,11 @@ namespace Wauncher.Views
 
             SettingsWindowViewModel.DiscordRpcChanged += OnDiscordRpcChangedExternally;
             this.Closed += (_, _) => SettingsWindowViewModel.DiscordRpcChanged -= OnDiscordRpcChangedExternally;
-            Opened += (_, _) => _allowHardwareAccelerationRestart = true;
+            Opened += async (_, _) =>
+            {
+                _allowHardwareAccelerationRestart = true;
+                await RefreshSteamButtonStateAsync();
+            };
         }
 
         private void OnDiscordRpcChangedExternally(bool enabled)
@@ -79,6 +85,58 @@ namespace Wauncher.Views
 
                 Environment.Exit(0);
             }, DispatcherPriority.Background);
+        }
+
+        private async void AddToSteamButton_Click(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+        {
+            if (_isRefreshingSteamButton)
+                return;
+
+            try
+            {
+                var exePath = Environment.ProcessPath;
+                if (string.IsNullOrWhiteSpace(exePath))
+                {
+                    ConsoleManager.ShowError("Couldn't find the running Wauncher executable path.");
+                    return;
+                }
+
+                await SteamShortcutManager.AddClassicCounterToSteamAsync(exePath);
+                await RefreshSteamButtonStateAsync();
+            }
+            catch (Exception ex)
+            {
+                ConsoleManager.ShowError($"Failed to add ClassicCounter to Steam:\n{ex.Message}");
+            }
+        }
+
+        private async Task RefreshSteamButtonStateAsync()
+        {
+            if (AddToSteamButton == null)
+                return;
+
+            try
+            {
+                _isRefreshingSteamButton = true;
+                AddToSteamButton.IsEnabled = false;
+                AddToSteamButton.Content = "Checking...";
+
+                var exePath = Environment.ProcessPath;
+                bool isAdded = !string.IsNullOrWhiteSpace(exePath) &&
+                               await SteamShortcutManager.IsClassicCounterAddedToSteamAsync(exePath);
+
+                AddToSteamButton.Content = isAdded ? "\u2713 Added" : "Add to Steam";
+                AddToSteamButton.IsEnabled = !isAdded;
+            }
+            catch
+            {
+                AddToSteamButton.Content = "Add to Steam";
+                AddToSteamButton.IsEnabled = true;
+            }
+            finally
+            {
+                _isRefreshingSteamButton = false;
+            }
         }
     }
 }
