@@ -4,6 +4,8 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Net.NetworkInformation;
+using System.Net.Http;
+using System.Text.Json;
 using Avalonia.Threading;
 using Wauncher.Utils;
 using Wauncher.ViewModels;
@@ -15,24 +17,16 @@ namespace Wauncher.Services
         private DispatcherTimer? _serverRefreshTimer;
         private int _serverRefreshInProgress;
         private bool _started;
+        private readonly HttpClient _httpClient;
+        private const string SERVER_LIST_URL = "Place_link_here";
 
         public bool IsOfflineMode => !System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable();
 
-        public ObservableCollection<ServerInfo> Servers { get; } = new()
-        {
-            // ── None (clears selection) ──────────────────────────────────────
-            new ServerInfo { Name = "None", IpPort = "", IsOnline = false },
-
-            // ── Real servers ─────────────────────────────────────────────────
-            new ServerInfo { Name = "NA | PUG | 64 Tick",   IpPort = "na.classiccounter.cc:27015",  Players = 0, MaxPlayers = 10, IsOnline = true },
-            new ServerInfo { Name = "NA | PUG-2 | 64 Tick", IpPort = "na.classiccounter.cc:27016",  Players = 0, MaxPlayers = 10, IsOnline = true },
-            new ServerInfo { Name = "EU | PUG | 64 Tick",   IpPort = "eu.classiccounter.cc:27016",  Players = 0, MaxPlayers = 10, IsOnline = true },
-            new ServerInfo { Name = "EU | PUG | 128 Tick",  IpPort = "eu.classiccounter.cc:27015",  Players = 0, MaxPlayers = 10, IsOnline = true },
-            new ServerInfo { Name = "EU | PUG-2 | 128 Tick",IpPort = "eu.classiccounter.cc:27022",  Players = 0, MaxPlayers = 10, IsOnline = true },
-        };
+        public ObservableCollection<ServerInfo> Servers { get; } = new();
 
         public ServerService()
         {
+            _httpClient = new HttpClient();
         }
 
         public void Start()
@@ -61,6 +55,10 @@ namespace Wauncher.Services
                 return;
             }
 
+            // Load servers from web API
+            await LoadServersFromWebAsync();
+
+            // Query live server status
             await ServerQuery.RefreshServers(Servers.Where(s => !s.IsNone));
 
             // Re-order by player count descending; None always stays at index 0
@@ -77,6 +75,78 @@ namespace Wauncher.Services
             }
         }
 
+        private async Task LoadServersFromWebAsync()
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(SERVER_LIST_URL) || SERVER_LIST_URL == "Place_link_here")
+                {
+                    // Fallback to default servers if no URL is configured
+                    await LoadDefaultServersAsync();
+                    return;
+                }
+
+                var response = await _httpClient.GetAsync(SERVER_LIST_URL);
+                response.EnsureSuccessStatusCode();
+                
+                var json = await response.Content.ReadAsStringAsync();
+                var serverData = JsonSerializer.Deserialize<ServerData[]>(json);
+                
+                if (serverData != null)
+                {
+                    // Clear existing servers except "None"
+                    var existingServers = Servers.Where(s => !s.IsNone).ToList();
+                    foreach (var server in existingServers)
+                    {
+                        Servers.Remove(server);
+                    }
+                    
+                    // Ensure "None" server exists
+                    if (!Servers.Any(s => s.IsNone))
+                    {
+                        Servers.Insert(0, new ServerInfo { Name = "None", IpPort = "", IsOnline = false });
+                    }
+                    
+                    // Add servers from web API
+                    foreach (var server in serverData)
+                    {
+                        Servers.Add(new ServerInfo 
+                        { 
+                            Name = server.name,
+                            IpPort = server.ipPort,
+                            MaxPlayers = server.maxPlayers,
+                            IsOnline = true
+                        });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error and fallback to default servers
+                System.Diagnostics.Debug.WriteLine($"Failed to load servers from web: {ex.Message}");
+                await LoadDefaultServersAsync();
+            }
+        }
+
+        private async Task LoadDefaultServersAsync()
+        {
+            // Clear existing servers except "None"
+            var existingServers = Servers.Where(s => !s.IsNone).ToList();
+            foreach (var server in existingServers)
+            {
+                Servers.Remove(server);
+            }
+
+            // Ensure "None" server exists
+            if (!Servers.Any(s => s.IsNone))
+            {
+                Servers.Insert(0, new ServerInfo { Name = "None", IpPort = "", IsOnline = false });
+            }
+
+            // No default servers - rely entirely on web API
+            // This forces users to configure the SERVER_LIST_URL
+        }
+
         public async Task RefreshServersSafeAsync()
         {
             if (Interlocked.Exchange(ref _serverRefreshInProgress, 1) == 1)
@@ -91,5 +161,13 @@ namespace Wauncher.Services
                 Interlocked.Exchange(ref _serverRefreshInProgress, 0);
             }
         }
+    }
+
+    // JSON data structure for server list
+    public class ServerData
+    {
+        public string name { get; set; } = "";
+        public string ipPort { get; set; } = "";
+        public int maxPlayers { get; set; }
     }
 }
