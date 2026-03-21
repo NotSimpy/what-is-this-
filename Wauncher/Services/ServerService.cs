@@ -83,7 +83,7 @@ namespace Wauncher.Services
         {
             try
             {
-                if (string.IsNullOrEmpty(SERVER_LIST_URL) || SERVER_LIST_URL == "Place_link_here")
+                if (string.IsNullOrEmpty(SERVER_LIST_URL) || SERVER_LIST_URL == "Place_link_here") // TODO: Remove this check when SERVER_LIST_URL is set
                 {
                     // Fallback to default servers if no URL is configured
                     await LoadDefaultServersAsync();
