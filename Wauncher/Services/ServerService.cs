@@ -18,7 +18,7 @@ namespace Wauncher.Services
         private int _serverRefreshInProgress;
         private bool _started;
         private readonly HttpClient _httpClient;
-        private const string SERVER_LIST_URL = "https://raw.githubusercontent.com/NotSimpy/test/main/servers.json";
+        private const string SERVER_LIST_URL = "https://raw.githubusercontent.com/edd13s/ClassicCounter-Servers/refs/heads/main/servers.json";
 
         public bool IsOfflineMode => !System.Net.NetworkInformation.NetworkInterface.GetIsNetworkAvailable();
 
